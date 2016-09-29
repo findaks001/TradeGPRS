@@ -1,0 +1,2 @@
+# TraDe_ADAM build property overrides
+#
