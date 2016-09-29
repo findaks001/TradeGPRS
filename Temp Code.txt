@@ -1,0 +1,352 @@
+ /*  Trade Version    __________       v 4.2.0               _____________    
+
+
+
+
+
+RESERVED
+
+
+
+
+
+  This code is used in Trade device to send normal data to our server(ie data.phoenixrobotix.com)
+  and normal formatted data to SPCB server (without encryption)
+  date: 19/09/2016 : 19:02
+
+  ----------------------------------Online Datalogger------------------------------------------
+*/
+/*---------------------------------PUT INDUSTRY PARAMETERS HERE------------------------------------------*/
+
+String dev_no = "nr1";
+String dev_key = "mcwlnf51RSPr0kXa";
+String param_data = "{2895,3,[SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500]}";
+String SPCB_ID;
+char data_count;
+String param_name[5], param_unit[5];
+float multiply_factor[5], maxConcentration[5];
+#define RS485DataDirectionPin 21
+#define caliberation 1   //  if caliberation is 1 entering caliberation mode i.e data won't be read from the ADAM
+                         //  if caliberation is 0 then output mode data will be read from the ADAM
+#define server 1         //  if server is 0 then goes to phoenix server only
+                         //  if server is 1 then goes to phoenix server and SPCB server.
+
+#define ISA_GSM_CONFIG 1
+#include <PROCESS1.h>
+int count = 0;
+char buffer[50];
+
+
+String ADAM_data = "#>-5.00-6.00-02.96 ";
+String param_value_string[5] ;
+float param_value_float[5]={0,0,0,0,0};
+
+
+
+void setup() {
+  ISASerial.begin(9600);
+  gsmSerial.begin(9600);
+  DataPort.begin(9600);
+  pinMode(RS485DataDirectionPin, OUTPUT);
+  digitalWrite(RS485DataDirectionPin, HIGH);
+  setFormat(param_data);
+  delay(1000);
+  time_initialize();
+}
+
+
+bool checkIfConnectionExists = false;
+bool server_switch = true;                                                         
+char RS485_health_status;
+
+void loop() {
+
+  
+  delay(1000);
+  ISAgsmPIPE();
+
+  if(countGlobalErrors()>10) {
+  ISAresetModem();
+  delay(20000);
+  }
+  
+  digitalWrite(RS485DataDirectionPin,HIGH);
+  Serial.println("Waiting for Data");
+  delay(10);
+  DataPort.write("#01");
+  DataPort.write('\x0D');
+  DataPort.flush();
+  digitalWrite(RS485DataDirectionPin,LOW);
+  delay(500);
+
+  if (server_switch)
+  {
+    #if !(caliberation)
+    ADAM_data = DataRead();
+    #endif
+
+    if (ADAM_data.length() < 5) {
+      M.N(F("Data length size very small.Problem reading data, perhaps RS 485 is damaged!!!"));
+      RS485_health_status = 0;
+    }
+    else RS485_health_status = 1;
+       
+    //delay(10000); 
+  }
+  Serial.println("Data from ADAM device " + ADAM_data);
+  extraction(ADAM_data, data_count);
+  caliberation_ADAM(); 
+
+
+
+  if(checkConnectionStatus()) checkIfConnectionExists = true;
+  else checkIfConnectionExists = false;
+  delay(500);
+ 
+
+
+  if (server_switch)
+  {
+    //String Ip = "117.239.117.27";
+    String Ip = "52.220.52.25";
+    //String Port = "9090";
+    String Port = "4567";
+
+    String prepacket_data = "";
+        for (char i = 0; i < data_count; i++) {
+          if (param_value_float[i]<0) param_value_float[i] = 0;
+          prepacket_data = prepacket_data + "," + param_name[i] + "," + String(param_value_float[i]) + "," + param_unit[i];
+        }
+
+        prepacket_data = prepacket_data.substring(1, prepacket_data.length());
+        
+    String datapacket = "*packet=" + date_server + "," + time_server + "," + SPCB_ID + "," + prepacket_data + "#";
+
+    Serial.println(datapacket);      
+    String protocol = "tcp";
+    if(!checkIfConnectionExists) {
+    gprs_send( datapacket,0, protocol, Ip, Port);
+    secondSend(datapacket, 0);
+    ISASerial.flush();
+    ISAhttpListen(8,0);
+    }
+    else {
+    secondSend(datapacket, 0);
+    ISASerial.flush();
+    ISAhttpListen(8,0);
+    }
+  }
+
+  else
+  {
+
+    String Ip = "data.phoenixrobotix.com";
+    String Port = "80";
+    //String Ip = "dev.phoenixrobotix.com";
+    
+
+      String prepacket_data;
+      if (RS485_health_status)
+      {
+        prepacket_data = "[";
+        for (char i = 0; i < data_count ; i++) {
+          prepacket_data = prepacket_data + "'" + String(param_value_float[i]) + "'" + ",";
+        }
+
+        prepacket_data = prepacket_data.substring(0, prepacket_data.length() - 1);
+        prepacket_data += "]";
+
+      }
+      else
+      {
+        prepacket_data = "\"RS_485_READ_ERROR\"";
+      }
+      
+    String URL =   "/data_logger/log_data.php?";
+    //String URL =   "/narendra/?";
+    String protocol = "http";
+
+    String packet = config_packet(dev_no, dev_key ,  prepacket_data);
+
+
+
+
+    gprs_send( packet,1, protocol, Ip, Port, URL);
+    //secondSend(datapacket);
+  
+
+  }
+
+  Serial.println("SERVER:" + ip + " | " + "PORT:" + port);
+
+  #if server
+  server_switch = !server_switch;
+  #endif
+  
+ 
+
+}
+
+
+
+
+
+
+//String ADAM_data="#>-0.0127-6.0122+0.556 ";
+void extraction(String data, char data_count)
+{
+  data.replace(" ", "");
+  char start_byte = '>';
+  char End;
+  char Start = data.indexOf(start_byte);
+  char delim_flag = 0;
+
+  End =  Start + 1;
+
+
+  for (char i = 0; i < data_count; i++)
+  {
+    Start = End + 1;
+
+    //data.indexOf('+', Start+1 )!=-1 ? data.indexOf('-', Start+1 )!=-1? delim_flag = '1':delim_flag = '2':delim_flag = '3';
+    data.indexOf('+', Start + 1 ) != -1 ? data.indexOf('-', Start + 1 ) != -1 ? delim_flag = '1' : delim_flag = '2' : data.indexOf('-', Start + 1 ) != -1 ? delim_flag = '3' : delim_flag = '4';
+    // if both are not -1 then delim_flag = 1;
+    // if position of '-' is -1 then delim_flag = 2
+    // if position of '+' is -1 then delim_flag = 3
+    // if position of '+' and '-' are -1 then delim_flag = 4
+    if (delim_flag == '1')
+      if (data.indexOf('+', Start + 2) < data.indexOf('-', Start + 2))   End = data.indexOf('+', Start + 2);
+      else  End = data.indexOf('-', Start + 2);
+    else if (delim_flag == '2') End = data.indexOf('+', Start + 2);
+    else if (delim_flag == '3') End = data.indexOf('-', Start + 2);
+    else if (delim_flag == '4') End = data.length();
+
+
+    Serial.print("delim_flag= ");
+    Serial.println(delim_flag);
+    param_value_string[i] = data.substring(Start , End);
+
+    param_value_float[i] = param_value_string[i].toFloat();
+
+    M.N(param_value_float[i], 4);
+
+  }
+
+}
+
+
+
+
+
+String DataRead(void)
+{
+  String rcvdata = "";
+  // while(DataPort.available())DataPort.read();
+  //while (!DataPort.available());
+  //delay(100);
+  Serial.println("data Received");
+  char start_byte = '>';
+  int start_capture_flag = 0;
+
+  int end_capture_flag = 0;
+
+  char delimiter = ' ' ;
+
+  unsigned long timeStampDataRead = millis();
+  M.O("timeStamp:  ");
+  M.N(timeStampDataRead);
+  char rcv;
+  while (1)
+  {
+    
+    if (DataPort.available() > 0)
+    {
+      rcv = DataPort.read();
+
+      delay(1);
+      if (rcv == start_byte) start_capture_flag = 1;
+
+
+      if (start_capture_flag) rcvdata += rcv;
+
+      if (rcv == delimiter) {
+        DataPort.readBytes(buffer, 45);
+        break;
+      }
+    }
+    if(millis() - timeStampDataRead > 10000) {
+      M.N("hey");
+      M.N("hey");
+      break;
+    }
+
+  }
+  while(DataPort.available() > 0){
+    rcv = DataPort.read();
+  }  
+  M.O (F("Receive data"));
+  Serial.println(rcvdata);
+  return rcvdata;
+}
+
+void caliberation_ADAM() {
+
+  for (char i = 0; i < data_count; i++ ) {
+
+
+    if (param_value_float[i] < 4 ) param_value_float[i] = 0 - param_value_float[i];
+
+    else if (param_value_float[i] > 20) {
+       param_value_float[i] = 0 - param_value_float[i];
+    }
+    multiply_factor[i] = maxConcentration[i] / 16;
+    if(param_value_float[i] > 0)
+    param_value_float[i] = (param_value_float[i] - 4) * multiply_factor[i];
+    M.O(F("No. "));
+    M.O(String(int(i)));
+    M.O(F(" value:"));
+    M.N(param_value_float[i]);
+  }
+
+}
+
+
+//String param_data = "{2895,2,[SPM:PPM:1000,SO2:ug/m3:200]}";
+
+void setFormat(String param_data) {
+
+  char Start = param_data.indexOf('{');
+  char End = param_data.indexOf(',', Start+1);
+  SPCB_ID = param_data.substring(Start+1, End);
+
+  Start = End;
+  End = param_data.indexOf(',', Start + 1);
+  data_count = param_data.substring(Start+1, End).toInt();
+
+  String param_details = param_data.substring(param_data.indexOf('[', End + 1), param_data.indexOf(']', End + 1)+1);
+  param_details.replace('[', ',');
+  param_details.replace(']', ',');
+  //Serial.println(param_details);
+  End = 0;
+  for (char i = 0; i < data_count; ++i)
+  {
+    Start = param_details.indexOf(',', End);
+    End = param_details.indexOf(':', Start + 1);
+    param_name[i] = param_details.substring(Start+1, End);
+    //Serial.println(param_name[i]);
+
+    Start = End;
+    End = param_details.indexOf(':', Start + 1);
+    param_unit[i] = param_details.substring(Start+1, End);
+    //Serial.println(param_unit[i]);
+
+    Start = End;
+    End = param_details.indexOf(',', End + 1);
+    maxConcentration[i] = param_details.substring(Start+1, End).toFloat();
+    //Serial.println(maxConcentration[i]);
+
+  }
+
+}
+
+

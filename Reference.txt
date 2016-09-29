@@ -1,0 +1,71 @@
+Phoenix Robotix Pvt. Ltd.
+Date : 28 Sept, 2016
+
+Software : Trade GPRS Production Version 2.0
+Hardware Supported : TraDe GPRS V 1.0
+
+Version 1.0 Execution Report:
+Program size: 28,054 bytes (used 11% of a 253,952 byte maximum)
+Minimum Memory Usage: 2810 bytes (34% of a 8192 byte maximum)
+
+Basic Features Included in this Version :
+1. Data Transmission with GPRS Technology
+2. Transmission Protocol Supported : TCP, HTTP
+3. Transmission to multiple Remote Server or Cloud Server
+4. Input Data Supported  : RS 485, RS 232, Modbus
+5. Required Specific Data from GPRS Network : 
+	- RSSI Value (Signal Strength)
+	- Real Time Clock from GSM Network
+
+// The below features are additional can vary in different applications, so all these features will
+// have option for enabling or disabling
+6. Error Handling functionality
+	- Malfunctioning of Source Analyzer        -  "ERROR : 01"
+	- Malfunctioning of Particular Sensors     -  "ERROR : 02"
+	- Malfunctioning of Receiving Components   -  "ERROR : 03"
+7. Time Period of data transmission can be customized (30 Seconds and above)
+8. Security Features
+	- Different Device IDs and Passkeys for different devices
+	- AES 256 bit Encryption
+
+
+List of Parameters:
+1. Predifined Parameters
+	- Device ID
+	- Device Key
+	- Number of Servers
+	- Protocol Type 1, IP Address 1, Port Number
+	- Input String Format
+		. {SPCB ID,Number of Parameters,[Parameter 1: Unit 1: Maximum Range,Parameter 2:...] }
+		. {2895,2,[SPM:PPM:1000,SO2:ug/m3:200]}";
+	- Use of defined String to get Data (for ADAM 4017/4017+)
+	- Encryption
+    - Error Handling Functionality
+
+2. Global Variables
+	- configuration parameters
+	- spcb id
+	- parameter name : string array
+	- parameter unit : string array
+	- maximum concentration : float array
+	- device id
+	- device key
+3. 
+
+List of Functions:
+1. Setup()
+	- GSM
+		. Initilize GSM  
+	    . Set the clock (Optional)
+	- RS 485
+		. Initilize Data Port
+		. Set Direction PIN
+	- Serial
+		. Initilize with buad Rate
+	- Setting up Basic Parameters, Unit, Maximum Concentration
+		. Parameter Type : String
+		. Unit : String
+		. Maximum Concentration : Float
+	- Set Data Transmission Time Period
+		. Type : Second, Minute, Hour, Days, Month, Year
+		. Duration : float 
