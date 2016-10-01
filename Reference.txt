@@ -50,7 +50,6 @@ List of Parameters:
 	- maximum concentration : float array
 	- device id
 	- device key
-3. 
 
 List of Functions:
 1. Setup()
@@ -67,5 +66,17 @@ List of Functions:
 		. Unit : String
 		. Maximum Concentration : Float
 	- Set Data Transmission Time Period
-		. Type : Second, Minute, Hour, Days, Month, Year
-		. Duration : float 
+		. Duration : float (in Minutes)
+
+2. void get_configuration_data()
+   - Extracts
+		. Name of Parameters
+		. Units 
+		. Maximum Concerntration for each parameters
+
+3. void set_GPRS_transmission_period(float time_interval,void (*transmit_data)());
+	- set the time interval for transmission 
+	- time_interval is set interms of minutes (it can be fractional also)
+
+4. void transmit_data();
+	- Transmit the data using GPRS communication 

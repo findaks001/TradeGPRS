@@ -1,11 +1,12 @@
 #include <PROCESS1.h>
 #include <PRGSM1.h>
 
-// Server Configuration
-#define NUMBER_OF_SERVERS 2 
-
 // Hardware Fixed Configuration
 #define RS485_DATA_DIRECTION_PIN 21
+
+// Server Configuration
+#define NUMBER_OF_SERVERS 2 
+#define SET_TRANSMISSION_INTERVAL  5    // Set the Interval in minutes
 
 // GSM Configuration Parameters
 #define ISA_GSM_CONFIG 1
@@ -44,9 +45,8 @@ float g_max_concentration[MAX_PARAMETERS];
 String g_device_id = "nr1";
 String g_device_key = "mcwlnf51RSPr0kXa";
 
-
 /* 
-.  Extracts SPCB ID, Number of Parameters, Parameters, Units and Maximum Value for each parameters
+.  Extracts SPCB ID, Number of Parameters, Name of Parameters, Units and Maximum Concerntration for each parameters
 .  Global variable are used accoringly to get the information required
 */
 void get_configuration_data();
@@ -56,7 +56,13 @@ void get_configuration_data();
 .  Type : Second, Minute, Hour, Days, Month, Year
 .  Duration : Can be floating Number 
 */
-void set_GPRS_transmission_period(String Type,float Duration);
+void set_GPRS_transmission_period(float time_interval, void(*transmit_data)());
+
+/*
+.  This is pointer function which will be called after certain intervals defined by the user
+.  It is used to transmit the data to the servers
+*/
+void transmit_data();
 
 void setup() {
 	// Initializing all the ports
@@ -66,11 +72,10 @@ void setup() {
 	DataPort.begin(9600);
 	pinMode(RS485_DATA_DIRECTION_PIN, OUTPUT);
 	digitalWrite(RS485_DATA_DIRECTION_PIN, HIGH);
-	set_GPRS_transmission_period("minute", 5);
+	set_GPRS_transmission_period(SET_TRANSMISSION_INTERVAL,transmit_data);
 }
 
-void get_configuration_data()
-{
+void get_configuration_data(){
 	/* 
 	. Sample String File : "SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500"
 	. "Parameter Name : Measured Unit : Maximum Range"
@@ -93,4 +98,21 @@ void get_configuration_data()
 		end = g_configuration_parameters.indexOf(',', begin + 1);
 		g_max_concentration[i] = g_configuration_parameters.substring(begin, end).toFloat();
 	}
+}
+
+void set_GPRS_transmission_period(float time_interval, void (*transmit_data)()){
+	
+	unsigned long time;    //  This number will overflow (go back to zero), after approximately 50 days.
+	// Initialize clock
+	time = millis();
+	// Convert time_interval from minutes to milli second
+	time_interval = (time_interval * 60) * 1000;
+
+	// check if the time interval has reached then start transmission
+	if (time_interval < (millis() - time))
+		transmit_data();
+}
+
+void transmit_data(){
+
 }
