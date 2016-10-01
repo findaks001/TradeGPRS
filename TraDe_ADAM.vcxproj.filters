@@ -21,12 +21,15 @@
     <ClInclude Include="__vm\.TraDe_ADAM.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="__vm\.TradeGPRS.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Temp Code.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="Text.txt">
+    <Text Include="Reference.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>

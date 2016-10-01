@@ -27,15 +27,19 @@
 // Parameter Configuration Part
 // #define REMOTE_CONFIGURATION_ENABLE
 
+#define INFO_SIZE 3	     // Number of information for individual Parameter "Name:Unit:Maximum Range"
 #ifndef REMOTE_CONFIGURATION_ENABLE
-	#define MAX_PARAMETERS 3 
+	#define MAX_PARAMETERS 3
 	#define SPCB_ID 2895
+	String g_configuration_parameters = "SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500";
+#elif
+	String g_configuration_parameters;
 #endif // REMOTE_CONFIGURATION_ENABLE
 
 String g_parameter_name[MAX_PARAMETERS];
 String g_parameter_unit[MAX_PARAMETERS];
-String g_max_concentration[MAX_PARAMETERS];
-String g_configuration_parameters = "{2895,3,[SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500]}";
+float g_max_concentration[MAX_PARAMETERS];
+
 // Device Configuration Paramaters
 String g_device_id = "nr1";
 String g_device_key = "mcwlnf51RSPr0kXa";
@@ -45,7 +49,7 @@ String g_device_key = "mcwlnf51RSPr0kXa";
 .  Extracts SPCB ID, Number of Parameters, Parameters, Units and Maximum Value for each parameters
 .  Global variable are used accoringly to get the information required
 */
-void get_configuration_data(String g_configuration_parameters);
+void get_configuration_data();
 
 /*
 .  Sets the Time Period for GPRS Data Transmission using RTC
@@ -65,7 +69,28 @@ void setup() {
 	set_GPRS_transmission_period("minute", 5);
 }
 
-void get_configuration_data(String g_configuration_parameters)
+void get_configuration_data()
 {
+	/* 
+	. Sample String File : "SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500"
+	. "Parameter Name : Measured Unit : Maximum Range"
+	*/
+	char begin = 0,end;
+	
+	for (char i = 0; i < MAX_PARAMETERS; i++)
+	{
+		// Extracting parameter name
+		end = g_configuration_parameters.indexOf(':', begin + 1);
+		g_parameter_name[i] = g_configuration_parameters.substring(begin, end);
+		begin = end;
 
+		// Extracting parameter unit
+		end = g_configuration_parameters.indexOf(':', begin + 1);
+		g_parameter_unit[i] = g_configuration_parameters.substring(begin, end);
+		begin = end;
+
+		// Extracting parameter maximum range and converting it to float
+		end = g_configuration_parameters.indexOf(',', begin + 1);
+		g_max_concentration[i] = g_configuration_parameters.substring(begin, end).toFloat();
+	}
 }

@@ -23,7 +23,7 @@ Basic Features Included in this Version :
 	- Malfunctioning of Source Analyzer        -  "ERROR : 01"
 	- Malfunctioning of Particular Sensors     -  "ERROR : 02"
 	- Malfunctioning of Receiving Components   -  "ERROR : 03"
-7. Time Period of data transmission can be customized (30 Seconds and above)
+7. Time Period of data transmission can be customized (10 Seconds and above)
 8. Security Features
 	- Different Device IDs and Passkeys for different devices
 	- AES 256 bit Encryption
