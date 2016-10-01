@@ -99,7 +99,8 @@ void loop() {
 
 
 
-  if(checkConnectionStatus()) checkIfConnectionExists = true;
+  if(checkConnectionStatus()) 
+	checkIfConnectionExists = true;
   else checkIfConnectionExists = false;
   delay(500);
  
@@ -112,7 +113,7 @@ void loop() {
     //String Port = "9090";
     String Port = "4567";
 
-    String prepacket_data = "";
+    String prepacket_data  = "";
         for (char i = 0; i < data_count; i++) {
           if (param_value_float[i]<0) param_value_float[i] = 0;
           prepacket_data = prepacket_data + "," + param_name[i] + "," + String(param_value_float[i]) + "," + param_unit[i];
@@ -124,7 +125,8 @@ void loop() {
 
     Serial.println(datapacket);      
     String protocol = "tcp";
-    if(!checkIfConnectionExists) {
+    
+	if(!checkIfConnectionExists) {
     gprs_send( datapacket,0, protocol, Ip, Port);
     secondSend(datapacket, 0);
     ISASerial.flush();
@@ -139,7 +141,6 @@ void loop() {
 
   else
   {
-
     String Ip = "data.phoenixrobotix.com";
     String Port = "80";
     //String Ip = "dev.phoenixrobotix.com";
@@ -165,36 +166,19 @@ void loop() {
     String URL =   "/data_logger/log_data.php?";
     //String URL =   "/narendra/?";
     String protocol = "http";
-
     String packet = config_packet(dev_no, dev_key ,  prepacket_data);
-
-
-
-
     gprs_send( packet,1, protocol, Ip, Port, URL);
     //secondSend(datapacket);
-  
-
   }
-
   Serial.println("SERVER:" + ip + " | " + "PORT:" + port);
 
   #if server
   server_switch = !server_switch;
   #endif
-  
- 
-
 }
 
-
-
-
-
-
 //String ADAM_data="#>-0.0127-6.0122+0.556 ";
-void extraction(String data, char data_count)
-{
+void extraction(String data, char data_count){
   data.replace(" ", "");
   char start_byte = '>';
   char End;
@@ -234,12 +218,7 @@ void extraction(String data, char data_count)
 
 }
 
-
-
-
-
-String DataRead(void)
-{
+String DataReadRS485(void){
   String rcvdata = "";
   // while(DataPort.available())DataPort.read();
   //while (!DataPort.available());
@@ -312,7 +291,6 @@ void caliberation_ADAM() {
 
 
 //String param_data = "{2895,2,[SPM:PPM:1000,SO2:ug/m3:200]}";
-
 void setFormat(String param_data) {
 
   char Start = param_data.indexOf('{');

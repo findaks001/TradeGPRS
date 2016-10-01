@@ -34,7 +34,7 @@ List of Parameters:
 	- Device ID
 	- Device Key
 	- Number of Servers
-	- Protocol Type 1, IP Address 1, Port Number
+	- spcb data format and Phoenix data format
 	- Input String Format
 		. {SPCB ID,Number of Parameters,[Parameter 1: Unit 1: Maximum Range,Parameter 2:...] }
 		. {2895,2,[SPM:PPM:1000,SO2:ug/m3:200]}";
@@ -49,7 +49,7 @@ List of Parameters:
 	- parameter unit : string array
 	- maximum concentration : float array
 	- device id
-	- device key
+	- device key 
 
 List of Functions:
 1. Setup()
@@ -67,8 +67,9 @@ List of Functions:
 		. Maximum Concentration : Float
 	- Set Data Transmission Time Period
 		. Duration : float (in Minutes)
+		. initialize rtc
 
-2. void get_configuration_data()
+2. void set_data_format()
    - Extracts
 		. Name of Parameters
 		. Units 
@@ -80,3 +81,14 @@ List of Functions:
 
 4. void transmit_data();
 	- Transmit the data using GPRS communication 
+
+5. String get_gprs_packet_data(enum type);
+	- Will receive application type and accordingly return required packet data format
+
+# SUGGESTION FOR MODIFICATION
+	- PRGSM1 need to be split into multiple header files i.e hearer for only GPRS or SMS or call 
+	- gprs_send to be included and related processing must be put inside GSM or GPRS library
+	- gprs_send must receive another parameter connection type : continous/discontinuous 
+	- Process library must only contain the data formting part
+	- time_server + date_server = time_stamp (must be returned together)
+	- send only the required user data from the main function
