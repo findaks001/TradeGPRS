@@ -1,24 +1,21 @@
-#include <PROCESS1.h>
-#include <PRGSM1.h>
-
-// Hardware Fixed Configuration
-#define RS485_DATA_DIRECTION_PIN 21
-
 // Device Configuration Paramaters
 String g_device_id = "nr1";
 String g_device_key = "mcwlnf51RSPr0kXa";
-
 // Define Configuration Parameters
-#define NUMBER_OF_SERVERS 2 
-#define SET_TRANSMISSION_INTERVAL  5     // Set the Interval in minutes
 #define MAX_PARAMETERS 3
 #define SPCB_ID 2895
-#define TEST_MODE 1			         // Running the code in testing mode defalut input strings to test the output
+#define TEST_MODE 1			             // Running the code in testing mode defalut input strings to test the output
 #define MASTER_STRING 0                  // if true : CommandString will be sent to get response from Sensor Device
+
 #define REMOTE_CONFIGURATION 1           // if true : Can't be configured remotely
 #define ENCRYPTION 0		             // if true : the data transmission will be encrypted
 #define ERROR_HANDLING 0                 // if true : Different Error will be acknowledged
 
+#define NUMBER_OF_SERVERS 2 
+#define TRANSMISSION_INTERVAL  (5 * 60) * 1000    // Set the Interval in milliseconds (Minutes * 60) * 1000 
+
+// Hardware Fixed Configuration
+#define RS485_DATA_DIRECTION_PIN 21
 
 // Define default parameter if remote configutation feature not available
 #if REMOTE_CONFIGURATION
@@ -44,6 +41,8 @@ String g_parameter_unit[MAX_PARAMETERS];
 float g_max_concentration[MAX_PARAMETERS];
 float g_parameter_value[MAX_PARAMETERS];
 
+unsigned long g_time = 0;    //  This number will overflow (go back to zero), after approximately 50 days.
+
 /* 
 .  Extracts SPCB ID, Number of Parameters, Name of Parameters, Units and Maximum Concerntration for each parameters
 .  Global variable are used accoringly to get the information required
@@ -51,14 +50,12 @@ float g_parameter_value[MAX_PARAMETERS];
 void set_data_format();
 
 /*
-.  Sets the Time Period for GPRS Data Transmission using RTC
-.  Type : Second, Minute, Hour, Days, Month, Year
-.  Duration : Can be floating Number 
+.  Checks if the set time interval has lapsed or not
 */
-void set_gprs_transmission_period(float time_interval, void(*transmit_data)());
+bool check_gprs_transmission_period();
 
 /*
-.  This is pointer function which will be called after certain intervals defined by the user
+.  This will be called after certain intervals defined by the user
 .  It is used to transmit the data to the servers
 */
 void transmit_gprs_data();
@@ -73,6 +70,9 @@ void read_data();
 */
 String get_gprs_packet_data(char type);
 
+#include <PROCESS1.h>
+#include <PRGSM1.h>
+
 void setup() {
 	// Initializing all the ports
 	ISASerial.begin(9600);
@@ -81,9 +81,14 @@ void setup() {
 	DataPort.begin(9600);
 	pinMode(RS485_DATA_DIRECTION_PIN, OUTPUT);
 	digitalWrite(RS485_DATA_DIRECTION_PIN, HIGH);
-	set_gprs_transmission_period(SET_TRANSMISSION_INTERVAL,transmit_gprs_data);
 	time_initialize();
 	set_data_format();
+}
+
+void loop(){
+	if (check_gprs_transmission_period()){
+		transmit_gprs_data();
+	}
 }
 
 void set_data_format(){
@@ -111,17 +116,15 @@ void set_data_format(){
 	}
 }
 
-void set_gprs_transmission_period(float time_interval, void (*transmit_data)()){
+bool check_gprs_transmission_period(){
 	
-	unsigned long time;    //  This number will overflow (go back to zero), after approximately 50 days.
-	// Initialize clock
-	time = millis();
-	// Convert time_interval from minutes to milli second
-	time_interval = (time_interval * 60) * 1000;
-
 	// check if the time interval has reached then start transmission
-	if (time_interval < (millis() - time))
-		transmit_gprs_data();
+	if (TRANSMISSION_INTERVAL < (millis() - g_time)){
+		g_time = millis();               // Store the Time for next check
+		return 	true;
+	}
+	else
+		return false;
 }
 
 void transmit_gprs_data(){

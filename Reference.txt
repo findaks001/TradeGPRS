@@ -49,7 +49,8 @@ List of Parameters:
 	- parameter unit : string array
 	- maximum concentration : float array
 	- device id
-	- device key 
+	- device key
+	- g_time  
 
 List of Functions:
 1. Setup()
@@ -65,9 +66,6 @@ List of Functions:
 		. Parameter Type : String
 		. Unit : String
 		. Maximum Concentration : Float
-	- Set Data Transmission Time Period
-		. Duration : float (in Minutes)
-		. initialize rtc
 
 2. void set_data_format()
    - Extracts
@@ -75,9 +73,8 @@ List of Functions:
 		. Units 
 		. Maximum Concerntration for each parameters
 
-3. void set_GPRS_transmission_period(float time_interval,void (*transmit_data)());
-	- set the time interval for transmission 
-	- time_interval is set interms of minutes (it can be fractional also)
+3. bool check_GPRS_transmission_period();
+	- check the time interval for transmission and return true if the time period has lapsed 
 
 4. void transmit_data();
 	- Transmit the data using GPRS communication 
@@ -92,3 +89,4 @@ List of Functions:
 	- Process library must only contain the data formting part
 	- time_server + date_server = time_stamp (must be returned together)
 	- send only the required user data from the main function
+	- GSM initialize must be include all the basic things need to be initialized in the begining(also include time)
