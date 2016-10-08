@@ -48,6 +48,7 @@ List of Parameters:
 	- parameter name : string array
 	- parameter unit : string array
 	- maximum concentration : float array
+	- parameter value : float array
 	- device id
 	- device key
 	- g_time  
@@ -82,6 +83,24 @@ List of Functions:
 5. String get_gprs_packet_data(enum type);
 	- Will receive application type and accordingly return required packet data format
 
+6. void read_rs485_raw_data()
+    - Read the data from RS485 Port in a string
+
+7. void extract_parameter_value()
+    - Extract parameter values from the raw string
+
+8. void calibrate_parameters() 
+    - convert 4-20 mA signal to Original Range
+
+9. void send_command()
+    - this function is called if the converter needs any command string to send the response
+
+10. Loop()
+    - check if the required time lapsed
+	    - start collecting the rs485 data
+		- get the value
+		- send using gprs
+		 
 # SUGGESTION FOR MODIFICATION
 	- PRGSM1 need to be split into multiple header files i.e hearer for only GPRS or SMS or call 
 	- gprs_send to be included and related processing must be put inside GSM or GPRS library
