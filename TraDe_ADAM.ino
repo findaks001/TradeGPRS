@@ -13,20 +13,15 @@ String g_device_key = "mcwlnf51RSPr0kXa";
 
 #define NUMBER_OF_SERVERS 2 
 #define TRANSMISSION_INTERVAL  (5 * 60) * 1000    // Set the Interval in milliseconds (Minutes * 60) * 1000 
-
-// Hardware Fixed Configuration
-#define RS485_DATA_DIRECTION_PIN 21
-#define MIN_CURRENT_SIGNAL 4
-#define MAX_CURRENT_SIGNAL 20
 // Define default parameter if remote configutation feature not available
 #if REMOTE_CONFIGURATION
-	String g_configuration_parameters = "SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500";
+	String g_configuration_parameters = "SPM:PPM:1000,SO2:ug/m3:2000,NO2:mg/m3:2000";
 #else
 	String g_configuration_parameters;
 #endif // REMOTE_CONFIGURATION
 
 // In testing mode default values are assigned
-#if TEST_MODE && MASTER_STRING
+#if TEST_MODE 
 	String g_raw_rs485_data = "#>-5.00-6.00-07.96 ";
 #else
 	String g_raw_rs485_data;;
@@ -37,49 +32,17 @@ String g_device_key = "mcwlnf51RSPr0kXa";
 	#define COMMAND_STRING "#01"         // #01 - Command to be Sent to get response
 #endif // ENABLE_MASTER_STRING
 
+// Hardware Fixed Configuration
+#define RS485_DATA_DIRECTION_PIN 21
+#define MIN_CURRENT_SIGNAL 4
+#define MAX_CURRENT_SIGNAL 20
+
 String g_parameter_name[MAX_PARAMETERS];
 String g_parameter_unit[MAX_PARAMETERS];
 float g_max_concentration[MAX_PARAMETERS];
 float g_parameter_value[MAX_PARAMETERS];
 
 unsigned long g_time = 0;    //  This number will overflow (go back to zero), after approximately 50 days.
-
-/* 
-.  Extracts SPCB ID, Number of Parameters, Name of Parameters, Units and Maximum Concerntration for each parameters
-.  Global variable are used accoringly to get the information required
-*/
-void set_data_format();
-
-/*
-.  Checks if the set time interval has lapsed or not
-*/
-bool check_gprs_transmission_period();
-
-/*
-.  This will be called after certain intervals defined by the user
-.  It is used to transmit the data to the servers
-*/
-void transmit_gprs_data();
-
-/*
-.	Read data from RS485 port and assign
-*/
-void read_rs485_raw_data();
-
-/*
-.	Send "#01" to get the response data
-*/
-void send_command();
-
-/*
-.	This function will return the formated data string required for sending the data to server
-*/
-String get_gprs_packet_data(char type);
-
-/*
-.	Calibrate the Parameters to find out the sensor value from (4mA - 20mA) Signals.
-*/
-void calibrate_parameters();
 
 #include <PROCESS1.h>
 
@@ -102,9 +65,13 @@ void loop(){
 		send_command();       // Used if the convertor needs any command to send the response
 		#endif	
 		
+        #if TEST_MODE
+		extract_parameter_values();
+		#else
 		read_rs485_raw_data();
-		extract_parameter_data();
-        
+		extract_parameter_values();
+        #endif
+
 		#if MASTER_STRING
 		calibrate_parameters(); // Used if receive 4-20 mA data
 		#endif
@@ -112,6 +79,10 @@ void loop(){
 	}
 }
 
+/*
+.  Extracts SPCB ID, Number of Parameters, Name of Parameters, Units and Maximum Concerntration for each parameters
+.  Global variable are used accoringly to get the information required
+*/
 void set_data_format(){
 	/* 
 	. Sample String File : "SPM:PPM:1000,SO2:ug/m3:200,NO2:g/m3:500"
@@ -137,6 +108,9 @@ void set_data_format(){
 	}
 }
 
+/*
+.  Checks if the set time interval has lapsed or not
+*/
 bool check_gprs_transmission_period(){
 	
 	// check if the time interval has reached then start transmission
@@ -148,6 +122,10 @@ bool check_gprs_transmission_period(){
 		return false;
 }
 
+/*
+.  This will be called after certain intervals defined by the user
+.  It is used to transmit the data to the servers
+*/
 void transmit_gprs_data(){
 	String gprs_packet_data;
 	
@@ -165,6 +143,7 @@ void transmit_gprs_data(){
 
 		case 1:   // Phoenix Server
 			Serial.println("Sending data to Phoenix Server");
+			config_packet(g_device_id, g_device_key, gprs_packet_data);
 			gprs_send(gprs_packet_data, i, "HTTP", "data.phoenixrobotix.com", "80", "/data_logger/log_data.php?");
 			break;
 		default:
@@ -173,13 +152,19 @@ void transmit_gprs_data(){
 	}
 }
 
+/*
+.	This function will return the formated data string required for sending the data to server
+*/
 String get_gprs_packet_data(char type){
 
 	String prepacket_data, data_packet;
 	
 	switch (type){
 	case 0:
-		// data format for Phoenix Server
+		/* 
+		. data format for Phoenix Server
+		. Sample Packet Data = "[34.45,568.45,69.56]"
+		*/
 		prepacket_data = "[";
 		for (char i = 0; i < MAX_PARAMETERS; i++) {
 			prepacket_data = prepacket_data + "'" + String(g_parameter_value[i]) + "'" + ",";
@@ -189,7 +174,10 @@ String get_gprs_packet_data(char type){
 		break;
 
 	case 1:
-		// data format for spcb server
+		/*
+		. data format for spcb server
+		. Sample Packet Data = "*packet=12-02-2016,22:23:56,2895,[34.45,568.45,69.56]#"
+		*/
 		for (char i = 0; i < MAX_PARAMETERS; i++) {
 			if (g_parameter_value[i]<0)
 				g_parameter_value[i] = 0;
@@ -207,6 +195,9 @@ String get_gprs_packet_data(char type){
 	#endif
 }
 
+/*
+.	Read data from RS485 port and assign
+*/
 void read_rs485_raw_data(){
 
 	char start_byte = '>';             // Starting Delimeter
@@ -248,6 +239,9 @@ void read_rs485_raw_data(){
 	#endif
 }
 
+/*
+.	Send "#01" to get the response data
+*/
 void send_command(){
 	digitalWrite(RS485_DATA_DIRECTION_PIN, HIGH);    // Set RS485 Port to Write Mode 
 	delay(10);
@@ -258,7 +252,17 @@ void send_command(){
 	delay(500);
 }
 
-void extract_parameter_data(){
+/*
+.	Once the raw data is captured at the RS485 port then the values are etracted and
+.   assigned to the parameter value array for further processing. This function is generic and works for
+.   any number of parameters. The complete function includes three parts once we extract the string without any white space
+.
+.   1. finding out the location of delimeters and storing in an array( + / -)
+.   2. Sorting the delimeter
+.   3. Extracting the parameter values using substring(), convert them into float and in the parameter_value array
+.
+*/
+void extract_parameter_values(){
 	g_raw_rs485_data.replace(" ", "");
 	char index[MAX_PARAMETERS+1];  // to hold the indices of the delimeter including string length
 	char start = 0;
@@ -301,9 +305,16 @@ void extract_parameter_data(){
 	}
 }
 
+/*
+.	Calibrate the Parameters to find out the sensor value from (4mA - 20mA) Signals.
+*/
 void calibrate_parameters(){
 	for (char i = 0; i < MAX_PARAMETERS; i++){
 		g_parameter_value[i] = (g_parameter_value[i]-MIN_CURRENT_SIGNAL)*( g_max_concentration[i]/(MAX_CURRENT_SIGNAL-MIN_CURRENT_SIGNAL));
+		if (g_parameter_value[i] < 0)
+			g_parameter_value[i] = 0;
+		if (g_parameter_value[i] > g_max_concentration[i])
+			g_parameter_value[i] = g_max_concentration[i];
 		#if TEST_MODE
 		Serial.print(g_parameter_name[i] + " : ");
 		Serial.println(g_parameter_value[i]);

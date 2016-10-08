@@ -51,7 +51,7 @@ List of Parameters:
 	- parameter value : float array
 	- device id
 	- device key
-	- g_time  
+	- current time
 
 List of Functions:
 1. Setup()
